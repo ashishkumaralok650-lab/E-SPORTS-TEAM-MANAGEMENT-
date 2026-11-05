@@ -1,0 +1,241 @@
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_TEAMS 50
+#define REG_FEE 500          /* registration fee for every team */
+
+/* One team's information */
+struct Team {
+    int  id;
+    char teamName[50];
+    char leaderName[50];
+    char game[30];
+    int  players;
+    char paid;               /* 'Y' = paid, 'N' = not paid */
+};
+
+struct Team teams[MAX_TEAMS];   /* array to store all teams */
+int count = 0;                  /* how many teams are registered */
+int nextId = 1;                 /* auto-increasing team ID */
+
+/* ---------- Helper functions ---------- */
+
+/* Read a line of text safely and remove the '\n' at the end */
+void readText(char text[], int size) {
+    fgets(text, size, stdin);
+    text[strcspn(text, "\n")] = '\0';
+}
+
+/* Read an integer safely */
+int readInt() {
+    char line[20];
+    int num = 0;
+    fgets(line, sizeof(line), stdin);
+    sscanf(line, "%d", &num);
+    return num;
+}
+
+/* Keep asking until the user types Y or N */
+char readYesNo() {
+    char line[10];
+    char ch;
+    while (1) {
+        fgets(line, sizeof(line), stdin);
+        ch = line[0];
+        if (ch == 'y') ch = 'Y';
+        if (ch == 'n') ch = 'N';
+        if (ch == 'Y' || ch == 'N') {
+            return ch;
+        }
+        printf("Please type Y or N: ");
+    }
+}
+
+/* Print one team */
+void printTeam(struct Team t) {
+    printf("ID           : %d\n", t.id);
+    printf("Team Name    : %s\n", t.teamName);
+    printf("Team Leader  : %s\n", t.leaderName);
+    printf("Game         : %s\n", t.game);
+    printf("Players      : %d\n", t.players);
+    if (t.paid == 'Y')
+        printf("Registration : PAID (Rs. %d)\n", REG_FEE);
+    else
+        printf("Registration : NOT PAID (Rs. %d due)\n", REG_FEE);
+    printf("-----------------------------------\n");
+}
+
+/* Find a team's position in the array using its ID. Returns -1 if not found */
+int findById(int id) {
+    int i;
+    for (i = 0; i < count; i++) {
+        if (teams[i].id == id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* ---------- Main features ---------- */
+
+void addTeam() {
+    struct Team t;
+
+    if (count >= MAX_TEAMS) {
+        printf("\nSorry, no more teams can be registered.\n");
+        return;
+    }
+
+    printf("\n--- Register New Team ---\n");
+
+    t.id = nextId;
+
+    printf("Enter team name        : ");
+    readText(t.teamName, sizeof(t.teamName));
+
+    printf("Enter team leader name : ");
+    readText(t.leaderName, sizeof(t.leaderName));
+
+    printf("Enter game (e.g. BGMI, Valorant, Free Fire): ");
+    readText(t.game, sizeof(t.game));
+
+    printf("Enter number of players: ");
+    t.players = readInt();
+
+    printf("Registration fee is Rs. %d. Has the team paid? (Y/N): ", REG_FEE);
+    t.paid = readYesNo();
+
+    teams[count] = t;
+    count++;
+    nextId++;
+
+    printf("\nTeam registered successfully! Team ID = %d\n", t.id);
+}
+
+void viewTeams() {
+    int i;
+
+    if (count == 0) {
+        printf("\nNo teams registered yet.\n");
+        return;
+    }
+
+    printf("\n========== ALL TEAMS ==========\n");
+    for (i = 0; i < count; i++) {
+        printTeam(teams[i]);
+    }
+}
+
+void searchTeam() {
+    char name[50];
+    int i, found = 0;
+
+    printf("\nEnter team name to search: ");
+    readText(name, sizeof(name));
+
+    for (i = 0; i < count; i++) {
+        /* strstr checks if 'name' is present inside the team name */
+        if (strstr(teams[i].teamName, name) != NULL) {
+            printTeam(teams[i]);
+            found = 1;
+        }
+    }
+
+    if (!found) {
+        printf("No team found with that name.\n");
+    }
+}
+
+void updatePayment() {
+    int id, pos;
+
+    printf("\nEnter team ID: ");
+    id = readInt();
+
+    pos = findById(id);
+    if (pos == -1) {
+        printf("Team not found.\n");
+        return;
+    }
+
+    printf("Current status of '%s': %s\n", teams[pos].teamName,
+           teams[pos].paid == 'Y' ? "PAID" : "NOT PAID");
+    printf("Has the team paid now? (Y/N): ");
+    teams[pos].paid = readYesNo();
+
+    printf("Payment status updated.\n");
+}
+
+void deleteTeam() {
+    int id, pos, i;
+
+    printf("\nEnter team ID to delete: ");
+    id = readInt();
+
+    pos = findById(id);
+    if (pos == -1) {
+        printf("Team not found.\n");
+        return;
+    }
+
+    /* shift all the teams after it one step to the left */
+    for (i = pos; i < count - 1; i++) {
+        teams[i] = teams[i + 1];
+    }
+    count--;
+
+    printf("Team deleted.\n");
+}
+
+void paymentSummary() {
+    int i, paidCount = 0;
+
+    for (i = 0; i < count; i++) {
+        if (teams[i].paid == 'Y') {
+            paidCount++;
+        }
+    }
+
+    printf("\n====== PAYMENT SUMMARY ======\n");
+    printf("Total teams     : %d\n", count);
+    printf("Paid teams      : %d\n", paidCount);
+    printf("Unpaid teams    : %d\n", count - paidCount);
+    printf("Money collected : Rs. %d\n", paidCount * REG_FEE);
+    printf("Money pending   : Rs. %d\n", (count - paidCount) * REG_FEE);
+}
+
+/* ---------- Program starts here ---------- */
+
+int main() {
+    int choice;
+
+    printf("===================================\n");
+    printf("  ESPORTS TEAM MANAGEMENT SYSTEM\n");
+    printf("===================================\n");
+
+    do {
+        printf("\n------------- MENU -------------\n");
+        printf("1. Register new team\n");
+        printf("2. View all teams\n");
+        printf("3. Search team by name\n");
+        printf("4. Update payment status\n");
+        printf("5. Delete a team\n");
+        printf("6. Payment summary\n");
+        printf("7. Exit\n");
+        printf("Enter your choice: ");
+        choice = readInt();
+
+        switch (choice) {
+            case 1: addTeam();       break;
+            case 2: viewTeams();     break;
+            case 3: searchTeam();    break;
+            case 4: updatePayment(); break;
+            case 5: deleteTeam();    break;
+            case 6: paymentSummary();break;
+            case 7: printf("\nThank you! Goodbye.\n"); break;
+            default: printf("\nInvalid choice. Try again.\n");
+        }
+    } while (choice != 7);
+
+    return 0;
+}
